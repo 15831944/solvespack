@@ -35,3 +35,12 @@
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Solvespace
+/CMakeCache.txt
+/build*/
+/test/**/*.diff.*
+/test/**/*.curr.*
+*.trace
+/obj-*/
+/*.slvs

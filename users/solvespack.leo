@@ -1946,11 +1946,19 @@ cd solvespack
 
 git submodule update --init</t>
 <t tx="leo1.20171224010119.1">@language python
-import os
+import os, errno
+
+try:
+    os.makedirs("./../build/")
+except OSError as e:
+    if e.errno != errno.EEXIST:
+        raise
+
 # cd into build
 os.chdir("./../build/")
 os.system('cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release')
-g.es("cmake complete")</t>
+g.es("cmake complete")
+</t>
 <t tx="leo1.20171224010128.1">@language python
 import os
 os.chdir("./../build")
