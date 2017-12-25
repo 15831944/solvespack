@@ -23,11 +23,14 @@
 <v t="leo1.20171224010556.1"><vh>comment out dlls</vh></v>
 <v t="leo1.20171224004928.1"><vh>@edit CMakeLists.txt</vh></v>
 </v>
-<v t="leo1.20171224221039.1"><vh>import src cpp</vh>
+<v t="leo1.20171224221039.1" a="E"><vh>import src cpp</vh>
 <v t="leo1.20171224221219.1" a="E"><vh>imported files</vh>
 <v t="leo1.20171224221326.1"><vh>import log</vh></v>
 <v t="leo1.20171224221220.1" a="E"><vh>@path ./../src</vh>
-<v t="leo1.20171224221913.1"><vh>binary space partitioning</vh></v>
+<v t="leo1.20171224221913.1" a="E"><vh>binary space partitioning</vh>
+<v t="leo1.20171225134826.1"><vh>Intro to BSP</vh></v>
+<v t="leo1.20171225142435.1"><vh>K-D Tree</vh></v>
+</v>
 <v t="leo1.20171224221220.2" a="E"><vh>@@clean bsp.cpp</vh>
 <v t="leo1.20171224221220.3"><vh>void SBsp3::InsertInPlane</vh></v>
 <v t="leo1.20171224221220.4"><vh>void SBsp3::InsertHow</vh></v>
@@ -51233,6 +51236,591 @@ importing directory: ./../src\srf
 inserting @ignore
 imported surface.h
 imported 179 nodes in 12 files in 2.51 seconds</t>
-<t tx="leo1.20171224221913.1">https://en.wikipedia.org/wiki/Binary_space_partitioning</t>
+<t tx="leo1.20171224221913.1">https://en.wikipedia.org/wiki/Binary_space_partitioning
+
+Binary space partitioning
+
+Used in visibility calculations
+
+n Building the BSP tree (2D)
+– Start with polygons and label all edges
+– Deal with one edge at a time
+– Extend each edge so that it splits the plane in two, it's normal points in the "outside" direction
+– Place first edge in tree as root
+– Add subsequent edges based on whether they are inside or outside of edges already in the tree. Inside edges go to the right, outside to the left. (opposite of Hill)
+– Edges that span the extension of an edge that is already in the tree are split in two and both are added to the tree.
+– An example should help….
+
+Binary space is a representation of the relative positions of objects.
+
+The BSP-tree will be able to tell you what's right in front of you and what's behind what's in front of you.  
+By traversing the BSP-tree, you can quickly generate a drawing order for your polygons, saving you the time spent Z-sorting or raycasting.
+
+a BSP tree is a heirarchical subdivisions of n dimensional space into convex subspaces. Each node has a front and back leaf. Starting off with the root node, all subsequent insertions are partitioned by the hyperplane of the current node. In 2 dimensional space, a hyperplane is a line. In 3 dimensional space, a hyperplane is a plane. </t>
+<t tx="leo1.20171225134826.1">--------------------------------------------------------------
+BSP-Tree Primer
+By Matthew Mastracci (mmastrac@ucalgary.ca)
+(c) Copyright 1998 by Matthew Mastracci.  All Rights Reserved.
+--------------------------------------------------------------
+
+Introduction
+
+     While listening to discussions on how Quake and DOOM work, while reading 
+Michael Abrash's columns in DDJ or even while browsing the released source to
+Wolfenstein, you've probably come across discussions about an algorithm that 
+seems to be able to do amazing things: BSP-trees.
+
+     What is a BSP-tree?  Well, the acronym "BSP" stands for "Binary Space 
+Partition".  So, you may then ask, "What exactly is a binary space?" and "How 
+the heck do we partition it?"  We'll get to all of that eventually.  The 
+concept of a BSP-tree is fairly complex to visualize if you don't understand 
+it, however, so I urge you not to go on before you've finished comprehending 
+the earlier sections.
+
+     When the concept of BSP-trees is first explained, you may find yourself
+doubting that they actually work.  When you see them in action from your own
+code, however, you will be amazed.  Once you can grasp these fundamentals, 
+the harder concepts will come together a lot easier.
+
+     There are exercises included at the end of some of the sections to help 
+illustrate the concepts.  If you find something confusing, doing one or two
+of the exercises may help clear things up. 
+
+Binary Spaces
+
+     The name "binary space" is a sort of misnomer.  It's not actually a 
+"space" in the mathematical vector definition, but instead a representation
+of the relative positions of objects.  As you may have guessed, there are 
+only two (hence binary) relative positions: ahead and behind.  Now, if you've
+ever worked with some simpler polygon-rendering programs, you've probably 
+heard of something called the "painter's algorithm".  It means that if you 
+want to draw object 2 in front of object 1, just draw object 1 and then 
+simply draw object 2 on top of it.  
+
+     With a little abstract connection, you can begin to see how BSP-trees 
+can be used for quickly drawing polygons.  The BSP-tree will be able to tell 
+you what's right in front of you and what's behind what's in front of you.  
+By traversing the BSP-tree, you can quickly generate a drawing order for your 
+polygons, saving you the time spent Z-sorting or raycasting.
+
+Binary Space Partitions
+
+     Id Software's DOOM, a mega-hit that pushed popular 3D-dungeon gaming out
+of the unshaded raycasting era of Wolfenstein, was the first BSP-tree game to
+be put in the spotlight.  All of a sudden, you could run around a giant 
+dungeon, instead of a tiny one.  You could run up and down stairs, jump off
+cliffs and even see the sky outside.  For those who were used to 90-degree
+dungeon games like Wolfenstein, it was a wonderful change.  
+
+     So how did Id do all this?  The answer, as you have probably guessed, is
+by using BSP-trees.  You should note, however, that the BSP-trees used in 
+DOOM are actually 2D, not 3D like Quake, and were mapped into the 3D space
+you see.  It's like taking a square to make a cube and a circle to make a 
+cylender.  It makes sense though: the walls in your house are all vertical, 
+are they not?  Note that DOOM doesn't do it exactly like this: the bright
+folks at Id came up with ways to optimize the process, but we'll discuss that
+later.
+
+     Let's get into our exploration of BSP-trees.  Before we start, just take
+a look at the actual term we're using: binary space partition tree.  Don't 
+forget that a BSP-tree is a tree made up of BINARY SPACE PARTITIONS.  It's 
+not made up of the actual polygons (these are stored in "leafs", to extend 
+the metaphor).  Why don't we take a look at an example, to get us started:
+   
+ ^ Y
+ |      /\
+ |    /    \
+ |   |       \
+ |   |        |
+ |   |        |
+ |   |       /
+ |    \    /
+ |      \/        X
+ +----------------&gt;
+O 
+
+     Now this is a farily simple room- one you might find in DOOM.  We'll 
+try to partition everything so that the partitions run through the 
+intersection of two walls (or split a wall fairly evenly, as we'll see 
+later).  Let's start with something we could call the "trunk node", "main 
+partition" or "main node" (we'll use main partition).  To keep things simple, 
+all of our partitions will be parallel to the X- or the Y-axis.  This first 
+partition will go straight down the middle of the room, vertically:
+
+ ^ Y
+ |      /\
+ |    /  | \            Note: the plus side will always point to
+ |   |   |   \          the increasing value of X or Y by convention 
+ |   |  -|+   |         (for this part only)
+ |   |   |    |
+ |   |   |   /
+ |    \  | /
+ |      \/        X
+ +----------------&gt;
+ O 
+
+     Notice the plus and minus signs to either side of the main partition.  
+These are just to help us keep track of what we'll call our "front" and 
+"back" nodes.  These nodes link us to the next partition ahead or behind the
+main partition.  We'll put one more single partition on the plus side and one
+more on the minus side:
+
+ ^ Y
+ |      /\
+ |    /  | \
+ |   | + |   \
+ |   |---|  + |
+ |   | - |----|
+ |   |   |  -/
+ |    \  | /
+ |      \/        X
+ +----------------&gt;
+ O 
+
+     Whoops!  It looks like the partition on the left-hand side goes right 
+through the wall and cuts it into two parts.  Not a problem.  We'll split the
+wall into two different parts, one on the plus side of the line and the other
+on the minus side.  Also, notice that the bottom partition on the right-hand
+side is finished: it only contains one wall.  To finish, we'll put in the last 
+three partitions, one for each new area we created before containing more 
+than one wall:
+
+ ^ Y
+ |    c /\
+ |    /__| \ d
+ | b |   |___\
+ |   |---|    | e
+ | a |   |----|
+ |   |___|   /
+ |    \  | /  f
+ |   g  \/        X
+ +----------------&gt;
+ O 
+
+     We're now finished.  Notice how the walls have been labelled with 
+lowercase letters.  The one we split into two parts has two letters 
+associated with it.  How do we construct our tree?  Well, just remember that
+each partition will have two links.  These links will either both connect to 
+two subpartions, both connect to a wall or one to a subpartition and one to
+a wall.  The BSP-tree for this room, bearing in mind our convention of the 
+plus side of a horizontal partition being up and the minus side down, and 
+the plus side for a vertical partition being right, while the minus side is
+left, is this:
+                                     
+                                     main
+                                    +/   \-
+                                   /       \
+                                sub         sub
+                              +/   \-     +/   \-
+                             sub   sub   sub    f
+                            +/ \- +/ \- +/ \-  
+                           c    b a   g d   e
+
+     Our tree is now complete.  Note that each of the partition nodes 
+contains only the direction of the partition and its x- or y-coordiante.  
+The wall nodes will contain the information detailing the (x,y) coordinates 
+of the two vertices of each wall segment.  Now that we have the tree built,
+we can go on to drawing it.
+
+Traversing the BSP-Tree
+
+     Drawing a room from a BSP tree is very simple.  Let's use a little C 
+pseudocode.  Note that a node has two links: Node-&gt;Plus and Node-&gt;Minus.  We
+could use "Ahead" and "Behind" instead, but they won't always represent the
+current situation.  It also has a linked list of walls coplanar (or 
+collinear) with the actual partition.  This allows us to define a leaf in the 
+same way we define a node, while also allowing us to create partitions that
+run across walls (as we'll need for some of our later examples).
+
+Boolean PlusSide(Node CurrentNode, Location2D OurLocation) 
+{
+  if (CurrentNode-&gt;Orientation == HORIZONTAL) {
+    if (OurLocation-&gt;y &gt; CurrentNode-&gt;Coord) 
+      return True;
+    else return False;
+  } else {
+    if (OurLocation-&gt;x &gt; CurrentNode-&gt;Coord) 
+      return True;
+    else return False;
+  }
+}
+
+void DrawNode(Node CurrentNode)
+{
+  if (CurrentNode-&gt;WallsOn) {
+    DrawWall(CurrentNode-&gt;WallsOn);
+  } else {
+    if (PlusSide(CurrentNode, OurLocation)) {
+      if (CurrentNode-&gt;Minus) DrawNode(CurrentNode-&gt;Minus);
+      if (CurrentNode-&gt;Plus) DrawNode(CurrentNode-&gt;Plus);
+    } else {
+      if (CurrentNode-&gt;Plus) DrawNode(CurrentNode-&gt;Plus);
+      if (CurrentNode-&gt;Minus) DrawNode(CurrentNode-&gt;Minus);
+    }
+  }
+}
+
+     It may seem a little cryptic, but consider the following situations:
+
+ ^ Y       *
+ |    c /\              * = Situation 1
+ |    /__| \ d          # = Situation 2
+ | b |   |___\          % = Situation 3
+ |   |---|    | e
+ | a |   |----|
+ | # |___| % /
+ |    \  | /  f
+ |   g  \/        X
+ +----------------&gt;
+ O 
+
+| Drawing |    Situation    |
+|  Order  |  1     2     3  |
++---------+-----+-----+-----+
+|    1    |  g  |  d  |  c  |
+|    2    |  a  |  e  |  b  |
+|    3    |  b  |  f  |  a  |
+|    4    |  c  |  c  |  g  |
+|    5    |  f  |  b  |  d  |
+|    6    |  e  |  g  |  e  |
+|    7    |  d  |  a  |  f  |
+
+     If you trace through it in your head, you'll get the same results.  On     
+closer inspection, you'll see that if you draw these polygons (adjusting for
+perspective and clipping ones behind the viewer), you'll get a perfect view
+of the room.  Take a pencil and paper and try partitioning some oddly shaped  
+rooms.  Remember a few simple hints (we'll keep our trees simple for the 
+moment):
+
+1.  Leaves represent the basic objects that you are drawing
+2.  Each node must have two links, and can only link to other nodes or to
+    leaves
+3.  Don't make the work hard for yourself- use the fewest number of 
+    orientations for your partitions (two for 2D, three for 3D, but some
+    situations may require others, as we'll see)
+4.  If you have to, place a partition on top of a wall 
+
+     In the next section, we'll figure out ways to partition by algorithms.
+
+Exercise:
+
+Try partitioning the following rooms, creating their BSP-trees and testing
+the drawing order for the points marked with an asterisk (enlarge the diagram
+on a piece of paper to make things easier)
+     
+       __f_            ___a___         (note: the letters tagging the walls
+i.   g/    \e   ii.  m/      b\_c      go either clockwise or 
+    h|      |d      l|    h_    |d     counterclockwise from "a")
+     a\____/c        k\__/ g\__/e
+  *     b              j i   f
+                           *
+
+BSP-Tree Objects
+
+     Before we start growing our first computer-generated BSP-trees, we need
+to define the basics of the objects we're going to use.  To start, let's 
+create the definition of a BSP-tree and work down:
+
+class BSPTree {
+  BSPTree();  // Constructor
+  ~BSPTree();  // Destructor
+  BSPNode * TrunkNode;  // A pointer to our trunk node
+};
+
+class BSPNode {     
+}
+
+Growing a 2D BSP-Tree (the simple way)
+
+     As an introduction, we'll start with the least-intelligent algorithm for
+a 2-dimensional set of lines, arranged like a room.  Let's start with our 
+first example:
+            c
+          ____
+       b /    \  d
+      a |  . ___\
+        |   / e*
+         \/ f
+        g
+
+     This example may seem complicated, but the abstract nature of the 
+algorithm allows us to do things like this with ease.  According to this 
+algorithm, each of the partitioning lines runs collinear with each of the 
+walls in the room.  Our first step is, of course, to pick the truck node.  
+Let's pick it as a line collinear with the wall marked with an asterisk.  
+We'll then see where every other wall fits in relation to this one (commonly
+referred to as "pushing" a wall through the BSP-tree).  Now we have to sort 
+the walls into ahead, behind, spanning or collinear.  To simplify this 
+example, the side of the line containing the pseudo center of the room 
+(marked by a period) will be the plus side.  Our list becomes:
+
+Plus            Minus           Spanned         Collinear
+ d               f               a               e
+ c               g
+ b
+
+     We'll split the wall spanned by the partition (at the point indicated by 
+an underscore) into a and a':
+            
+            c
+          ____
+       b /    \  d
+     a' |_ . ___\
+      a |   / e*
+         \/ f
+        g
+
+     Our list is now:
+
+Plus            Minus           Collinear
+ d               f               e
+ c               g
+ b               a
+ a'
+
+     Let's recurse, doing this using the plus list instead of the whole list
+and by taking the first element in the list as the initial partition:
+
+Plus            Minus           Collinear
+ c                               d
+ b
+ a'
+               
+     Continue this method with the plus lists, and then repeat for the minus
+lists.  Eventually, you'll get a BSP-tree that looks like this (check if you
+want):
+
+                        main (e)
+                      -/        \+
+                    sub (f)   sub (d)
+                       |+       |+
+                    sub (g)   sub (c)
+                       |+       |+
+                    sub (a)   sub (b)
+                                |+
+                              sub (a')
+
+     This list may seem more like a hanging germanium than a tree.  There's 
+no problem with this, however.  It just means that the room is constructed   
+fairly simply.  Consider the point marked with an asterisk:
+            
+            c
+    *     ____
+       b /    \  d
+     a' |  . ___\
+      a |   / e
+         \/ f
+        g
+
+     Using the algorithm we learned earlier, let's write the drawing order 
+from back to front (remembering the order: the opposite side to the one we're
+currently on, any collinear walls and then the walls on the same side we 
+are):
+
+f, g, a, e, d, a', b, c
+
+     Not surprisingly, it works.  
+
+Splitting a Wall in 2D
+
+Splitting a Polygon in 3D
+
+Adding Objects
+
+     So far, our virtual world can handle static scenes with ease.  You might
+be wondering how we can incorporate dynamic objects into the picture.  These
+objects should be able to move around with ease and hopefully not consume a
+lot of processing power.  Luckily, it turns out that for most cases, even if
+our objects are comprised of BSP-trees themselves, we won't have to break a
+sweat over this.
+
+     
+
+
+Determining Relative Position to a Plane
+
+     Determining your relative position with a plane is quite simple.  All it
+requires is: the normal of the plane (precalculated), the closest distance
+from the origin to the plane (precalculated) and a vector going from the 
+origin to your position (ie: your &lt;x, y, z&gt; location).  To get the formula,
+let's start with a simple diagram:
+
+_____________
+   u  /|                  Where:  
+    /  | |d|, n             - v is a vector from the origin to the viewer's
+    \ V|                    location
+   v  \|                    - d is the shortest distance from the plane to
+       o                    the origin
+                            - n is a vector running OPPOSITE to the direction 
+                            of the plane's normal 
+                            - u is a vector from the closest spot on the 
+                            plane to the origin to the viewer
+                            - V is the angle between v and n
+
+     If you've worked with vectors before, you'll remember that the dot 
+product is equal to the product of the absolute lengths of the two vectors,
+multiplied by the angle between them or the sum of the products of the 
+components.  Mathematically:
+
+dot(v, n) = |v||n| cos V = v.x * n.x + v.y * n.y + v.z * n.z
+
+     Since the length of the normal is one, we can simplify this to:
+
+dot(v, n) = |v| cos V = v.x * n.x + v.y * n.y + v.z * n.z
+
+     But wait!  |v| cos V is just the component of the vector v in the 
+direction of the vector n.  That means if dot(v, n) is less than d, we're on 
+top of the plane (the side the plane's normal points to) and if dot(v, n) is 
+greater than d, we're on the bottom.  So, we can just subtract the two and 
+simplify this a little further:
+
+Side = sgn(d - dot(v, n))
+Side = sgn(d - v.x * n.x + v.y * n.y + v.z * n.z)
+
+  Note: sgn is the signum (or sign) function, sgn(x) = x / abs(x), sgn(0) = 0
+  
+     We can determine quickly which side of any polygon we're on by using 
+our formula.
+
+Determining Relative Position to a Line
+
+     Determining which side of a line you're on is simply a degenerate case
+of relative position to a plane.  Extend the partitioning line into three
+dimensions by adding a z-component of zero.  We can now take a normal from
+our pseudoplane which can be used for determining relative position by the
+formula above.
+</t>
+<t tx="leo1.20171225142435.1"># https://en.wikipedia.org/wiki/K-d_tree
+# source from: https://rosettacode.org/wiki/K-d_tree#Python
+from random import seed, random
+from time import clock
+from operator import itemgetter
+from collections import namedtuple
+from math import sqrt
+from copy import deepcopy
+ 
+ 
+def sqd(p1, p2):
+    return sum((c1 - c2) ** 2 for c1, c2 in zip(p1, p2))
+ 
+ 
+class KdNode(object):
+    __slots__ = ("dom_elt", "split", "left", "right")
+ 
+    def __init__(self, dom_elt, split, left, right):
+        self.dom_elt = dom_elt
+        self.split = split
+        self.left = left
+        self.right = right
+ 
+ 
+class Orthotope(object):
+    __slots__ = ("min", "max")
+ 
+    def __init__(self, mi, ma):
+        self.min, self.max = mi, ma
+ 
+ 
+class KdTree(object):
+    __slots__ = ("n", "bounds")
+ 
+    def __init__(self, pts, bounds):
+        def nk2(split, exset):
+            if not exset:
+                return None
+            exset.sort(key=itemgetter(split))
+            m = len(exset) // 2
+            d = exset[m]
+            while m + 1 &lt; len(exset) and exset[m + 1][split] == d[split]:
+                m += 1
+ 
+            s2 = (split + 1) % len(d)  # cycle coordinates
+            return KdNode(d, split, nk2(s2, exset[:m]),
+                                    nk2(s2, exset[m + 1:]))
+        self.n = nk2(0, pts)
+        self.bounds = bounds
+ 
+T3 = namedtuple("T3", "nearest dist_sqd nodes_visited")
+ 
+ 
+def find_nearest(k, t, p):
+    def nn(kd, target, hr, max_dist_sqd):
+        if kd is None:
+            return T3([0.0] * k, float("inf"), 0)
+ 
+        nodes_visited = 1
+        s = kd.split
+        pivot = kd.dom_elt
+        left_hr = deepcopy(hr)
+        right_hr = deepcopy(hr)
+        left_hr.max[s] = pivot[s]
+        right_hr.min[s] = pivot[s]
+ 
+        if target[s] &lt;= pivot[s]:
+            nearer_kd, nearer_hr = kd.left, left_hr
+            further_kd, further_hr = kd.right, right_hr
+        else:
+            nearer_kd, nearer_hr = kd.right, right_hr
+            further_kd, further_hr = kd.left, left_hr
+ 
+        n1 = nn(nearer_kd, target, nearer_hr, max_dist_sqd)
+        nearest = n1.nearest
+        dist_sqd = n1.dist_sqd
+        nodes_visited += n1.nodes_visited
+ 
+        if dist_sqd &lt; max_dist_sqd:
+            max_dist_sqd = dist_sqd
+        d = (pivot[s] - target[s]) ** 2
+        if d &gt; max_dist_sqd:
+            return T3(nearest, dist_sqd, nodes_visited)
+        d = sqd(pivot, target)
+        if d &lt; dist_sqd:
+            nearest = pivot
+            dist_sqd = d
+            max_dist_sqd = dist_sqd
+ 
+        n2 = nn(further_kd, target, further_hr, max_dist_sqd)
+        nodes_visited += n2.nodes_visited
+        if n2.dist_sqd &lt; dist_sqd:
+            nearest = n2.nearest
+            dist_sqd = n2.dist_sqd
+ 
+        return T3(nearest, dist_sqd, nodes_visited)
+ 
+    return nn(t.n, p, t.bounds, float("inf"))
+ 
+ 
+def show_nearest(k, heading, kd, p):
+    print(heading + ":")
+    print("Point:           ", p)
+    n = find_nearest(k, kd, p)
+    print("Nearest neighbor:", n.nearest)
+    print("Distance:        ", sqrt(n.dist_sqd))
+    print("Nodes visited:   ", n.nodes_visited, "\n")
+ 
+ 
+def random_point(k):
+    return [random() for _ in range(k)]
+ 
+ 
+def random_points(k, n):
+    return [random_point(k) for _ in range(n)]
+ 
+if __name__ == "__main__":
+    seed(1)
+    P = lambda *coords: list(coords)
+    kd1 = KdTree([P(2, 3), P(5, 4), P(9, 6), P(4, 7), P(8, 1), P(7, 2)],
+                  Orthotope(P(0, 0), P(10, 10)))
+    show_nearest(2, "Wikipedia example data", kd1, P(9, 2))
+ 
+    N = 400000
+    t0 = clock()
+    kd2 = KdTree(random_points(3, N), Orthotope(P(0, 0, 0), P(1, 1, 1)))
+    t1 = clock()
+    text = lambda *parts: "".join(map(str, parts))
+    show_nearest(2, text("k-d tree with ", N,
+                         " random 3D points (generation time: ",
+                         t1-t0, "s)"),
+                 kd2, random_point(3))</t>
 </tnodes>
 </leo_file>
