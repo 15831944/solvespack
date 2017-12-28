@@ -13,7 +13,6 @@
 <v t="leo1.20171224004528.2"><vh>@data qt-gui-plugin-style-sheet</vh></v>
 <v t="leo1.20171224004528.3"><vh>@string initial_split_orientation = horizontal</vh></v>
 </v>
-<v t="leo1.20171224010119.1"><vh>@button cmake</vh></v>
 <v t="leo1.20171224010128.1"><vh>@button mingw32-make</vh></v>
 <v t="leo1.20171224082621.1" a="E"><vh>@path ./../</vh>
 <v t="leo1.20171224082630.1"><vh>@edit README.md</vh></v>
@@ -26,7 +25,7 @@
 <v t="leo1.20171224221039.1" a="E"><vh>import src cpp</vh>
 <v t="leo1.20171224221219.1" a="E"><vh>imported files</vh>
 <v t="leo1.20171224221326.1"><vh>import log</vh></v>
-<v t="leo1.20171224221220.1" a="E"><vh>@path ./../src</vh>
+<v t="leo1.20171224221220.1"><vh>@path ./../src</vh>
 <v t="leo1.20171224221913.1" a="E"><vh>binary space partitioning</vh>
 <v t="leo1.20171225134826.1"><vh>Intro to BSP</vh></v>
 <v t="leo1.20171225142435.1"><vh>K-D Tree</vh></v>
@@ -1948,25 +1947,32 @@ vertical: body pane on the botton</t>
 cd solvespack
 
 git submodule update --init</t>
-<t tx="leo1.20171224010119.1">@language python
-import os, errno
-
-try:
-    os.makedirs("./../build/")
-except OSError as e:
-    if e.errno != errno.EEXIST:
-        raise
-
-# cd into build
-os.chdir("./../build/")
-os.system('cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release')
-g.es("cmake complete")
-</t>
 <t tx="leo1.20171224010128.1">@language python
-import os
-os.chdir("./../build")
-os.system("mingw32-make")
-g.es("mingw32-make done")</t>
+# 利用執行緒執行 mingw32-make 指令
+import os, errno
+import threading
+
+def domake():
+    try:
+        os.makedirs("./../build/")
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+    
+    # cd into build
+    os.chdir("./../build/")
+    os.system('cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release')
+    g.es("cmake complete")
+
+    os.system("mingw32-make clean")
+    os.system("mingw32-make")
+    try:
+        g.es("mingw32-make done")
+    except:
+        print("mingw32-make done")
+
+make = threading.Thread(target=domake)
+make.start()</t>
 <t tx="leo1.20171224010556.1">#[[
     list(APPEND ANGLE_DEFINITIONS
         "-DANGLE_PRELOADED_D3DCOMPILER_MODULE_NAMES={ \"d3dcompiler_47.dll\", \"d3dcompiler_46.dll\", \"d3dcompiler_43.dll\" }")
